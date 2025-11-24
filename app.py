@@ -4,6 +4,7 @@
 from datetime import datetime, timedelta
 import secrets
 import json
+import os
 
 from flask import Flask, request, make_response, redirect, render_template, url_for, jsonify
 from flask_sqlalchemy import SQLAlchemy
@@ -12,8 +13,18 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from utils import verify_fingerprint  # 指纹校验的占位函数
 
 app = Flask(__name__)
-# TODO: 修改为你的 MySQL 连接字符串
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://user:password@127.0.0.1:3306/authdb?charset=utf8mb4'
+# 从环境变量读取数据库连接信息，提供默认值以便本地开发
+db_user = os.getenv('MYSQL_USER', 'authuser')
+db_pass = os.getenv('MYSQL_PASSWORD', 'authpass')
+db_host = os.getenv('MYSQL_HOST', '127.0.0.1')
+db_port = os.getenv('MYSQL_PORT', '3306')
+db_name = os.getenv('MYSQL_DATABASE', 'authdb')
+
+# 构建 SQLALCHEMY 的连接字符串
+# 注意：使用 pymysql 驱动（requirements.txt 中应有 PyMySQL）
+app.config['SQLALCHEMY_DATABASE_URI'] = (
+    f"mysql+pymysql://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}?charset=utf8mb4"
+)
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
