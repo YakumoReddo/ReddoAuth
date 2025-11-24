@@ -10,6 +10,7 @@ WORKDIR /app
 
 # 先复制依赖文件并安装依赖（利用缓存层）
 COPY requirements.txt /app/requirements.txt
+COPY debian.sources /etc/apt/sources.list.d/debian.sources
 
 # 更新 apt 索引并安装 pip 依赖所需的基本工具（如需编译扩展）
 RUN apt-get update \
