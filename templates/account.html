@@ -1,0 +1,39 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>个人中心</title>
+</head>
+<body>
+  <h1>个人中心 - {{ user.username }}</h1>
+  <form method="post" action="/logout">
+    <button type="submit">登出当前会话</button>
+  </form>
+
+  <h2>已存储的 token / ip / domain 列表</h2>
+  <table border="1" cellpadding="6">
+    <thead>
+      <tr><th>ID</th><th>Domain</th><th>IP</th><th>Expires At (UTC)</th><th>Remember</th><th>Fingerprint</th><th>操作</th></tr>
+    </thead>
+    <tbody>
+    {% for t in tokens %}
+      <tr>
+        <td>{{ t.id }}</td>
+        <td>{{ t.domain }}</td>
+        <td>{{ t.ip }}</td>
+        <td>{{ t.expires_at }}</td>
+        <td>{{ 'Yes' if t.remember else 'No' }}</td>
+        <td>{{ t._short_fp or '' }}</td>
+        <td>
+          <form method="post" style="display:inline">
+            <input type="hidden" name="action" value="delete">
+            <input type="hidden" name="token_id" value="{{ t.id }}">
+            <button type="submit">删除</button>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</body>
+</html>

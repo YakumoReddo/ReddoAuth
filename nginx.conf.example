@@ -1,0 +1,48 @@
+# nginx 配置片段，演示如何和 auth 服务配合
+# 假设 auth 服务运行在 http://127.0.0.1:5000
+
+# 保护 monitor.example.com 的 server
+server {
+    listen 80;
+    server_name monitor.example.com;
+
+    # 子请求鉴权
+    # 当访问 monitor.example.com 时，nginx 会发起 subrequest 到 /auth_verify
+    location / {
+        auth_request /auth_verify;
+        error_page 401 = @login_redirect;
+        # 这里是静态文件根目录
+        root /var/www/monitor;
+        try_files $uri $uri/ =404;
+    }
+
+    # 将子请求代理到真正的 auth 服务
+    location = /auth_verify {
+        internal;
+        proxy_pass http://127.0.0.1:5000/auth;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Original-URI $scheme://$http_host$request_uri;
+        # 将客户端 Cookie 一并转发
+        proxy_set_header Cookie $http_cookie;
+        proxy_pass_request_body off;
+        proxy_set_header Content-Length "";
+    }
+
+    # 当 auth 返回 401 时，重定向到 auth.example.com 登录页面（并带上原始 URL）
+    location @login_redirect {
+        return 302 https://auth.example.com/login?next=$scheme://$http_host$request_uri;
+    }
+}
+
+# auth.example.com 服务（示例，让 auth 服务直接对外，或可放到同一主机）
+server {
+    listen 80;
+    server_name auth.example.com;
+
+    location / {
+        proxy_pass http://127.0.0.1:5000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
