@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: auth_db
+    restart: unless-stopped
+    environment:
+      # 初始化 MySQL 的认证信息，生产环境请替换为更安全的密码并使用 secrets
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: authdb
+      MYSQL_USER: authuser
+      MYSQL_PASSWORD: authpass
+    ports:
+      # 将容器的 3306 映射到宿主机的 23308
+      - "23308:3306"
+    volumes:
+      # 持久化 MySQL 数据
+      - db_data:/var/lib/mysql
+      # 可选：把项目根目录下的 db_init.sql 当作初始化脚本（第一次启动时会执行）
+      # - ./db_init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      # 健康检查，确保只有当数据库可用时 web 服务才会启动（depends_on 的 condition 需要 docker-compose v2；这里用于参考）
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build: .
+    container_name: auth_web
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # 将数据库连接信息注入容器环境，建议在 app 中使用这些环境变量来构建 SQLALCHEMY_DATABASE_URI
+      MYSQL_HOST: db
+      MYSQL_PORT: 3306
+      MYSQL_DATABASE: authdb
+      MYSQL_USER: authuser
+      MYSQL_PASSWORD: authpass
+      # Flask 环境变量（可按需调整）
+      FLASK_APP: app.py
+      FLASK_ENV: production
+    ports:
+      # 将容器的 5000（Flask 默认端口）映射到宿主机的 8082
+      - "8082:5000"
+    volumes:
+      # 挂载当前项目目录到容器，便于开发时热更新（生产可去掉或改为构建镜像时 COPY）
+      - ./:/app
+    working_dir: /app
+    command: flask run --host=0.0.0.0 --port=5000
+
+volumes:
+  db_data:
