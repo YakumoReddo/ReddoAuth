@@ -48,7 +48,6 @@ class Token(db.Model):
     expires_at = db.Column(db.DateTime, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-db.create_all()  # 创建数据库表（如果不存在）
 # 常量配置
 COOKIE_NAME = 'access_token'
 COOKIE_DOMAIN = '.example.com'  # 请根据实际调整
@@ -252,5 +251,9 @@ def create_user_route():
     db.session.commit()
     return jsonify({'ok': True, 'user_id': u.id})
 
+
+with app.app_context():
+    db.create_all()
+    print("数据库表已创建或已存在")
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
