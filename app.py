@@ -37,6 +37,7 @@ class Token(db.Model):
     expires_at = db.Column(db.DateTime, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+db.create_all()  # 创建数据库表（如果不存在）
 # 常量配置
 COOKIE_NAME = 'access_token'
 COOKIE_DOMAIN = '.example.com'  # 请根据实际调整
