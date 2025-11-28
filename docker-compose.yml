@@ -28,9 +28,10 @@ services:
 
   web:
     build: .
+    image: reddoauth_web:latest
     container_name: auth_web
     restart: unless-stopped
-    depends_on:
+    depends_on: 
       db:
         condition: service_healthy
     environment:
