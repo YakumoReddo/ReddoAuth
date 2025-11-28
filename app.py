@@ -148,24 +148,31 @@ def login():
     登录页：
     - GET: 展示登录表单（accepts ?next=）
     - POST: 校验用户名密码，创建 token，设置 cookie 并跳回 next
+    注意：前端发送的是 MD5 哈希后的密码，不是明文密码
     """
     if request.method == 'GET':
         next_url = request.args.get('next', '/')
         return render_template('login.html', next=next_url)
     # POST 处理
     username = request.form.get('username', '')
-    password = request.form.get('password', '')
+    # 前端发送 MD5 哈希后的密码
+    password_hash_md5 = request.form.get('password_hash', '')
     remember = request.form.get('remember', '') == 'on'
     next_url = request.form.get('next') or '/'
 
+    # 验证用户名和密码哈希
+    if not username or not password_hash_md5:
+        return render_template('login.html', error='用户名或密码不能为空', next=next_url)
+
     user = User.query.filter_by(username=username).first()
-    if not user or not check_password_hash(user.password_hash, password):
+    # 后端存储的是 werkzeug 哈希(MD5(password))，所以用 MD5 哈希进行验证
+    if not user or not check_password_hash(user.password_hash, password_hash_md5):
         return render_template('login.html', error='用户名或密码错误', next=next_url)
 
     # 创建 token，绑定当前登录时的 ip 和 domain（domain 由请求 Host 决定）
     host = request.headers.get('Host') or request.host
     ip = request.headers.get('X-Real-IP') or request.remote_addr
-    # 指纹从表单或 header 中获取（预留）
+    # 指纹从表单或 header 中获取
     fingerprint_json = request.form.get('fingerprint') or request.headers.get('X-Fingerprint')
     t = create_token(user.id, host, ip, remember=remember, fingerprint=fingerprint_json)
 
@@ -237,23 +244,98 @@ def account():
             tk._short_fp = tk.fingerprint
     return render_template('account.html', user=user, tokens=tokens)
 
+
+def is_admin(user):
+    """检查用户是否为管理员"""
+    return user and user.username == 'admin'
+
+
+@app.route('/add_user', methods=['GET', 'POST'])
+@login_required_view
+def add_user():
+    """
+    添加用户页面（仅管理员可用）
+    - GET: 显示添加用户表单
+    - POST: 创建新用户
+    注意：前端发送的是 MD5 哈希后的密码
+    """
+    user = request.current_user
+    if not is_admin(user):
+        return ('权限不足：只有管理员可以添加用户', 403)
+    
+    if request.method == 'GET':
+        return render_template('add_user.html', user=user)
+    
+    # POST 处理
+    new_username = request.form.get('new_username', '').strip()
+    # 前端发送 MD5 哈希后的密码
+    password_hash_md5 = request.form.get('password_hash', '')
+    
+    error = None
+    success = None
+    
+    if not new_username:
+        error = '用户名不能为空'
+    elif not password_hash_md5:
+        error = '密码不能为空'
+    elif User.query.filter_by(username=new_username).first():
+        error = '用户名已存在'
+    else:
+        # 使用 werkzeug 对 MD5 哈希再次哈希后存储
+        u = User(username=new_username, password_hash=generate_password_hash(password_hash_md5))
+        db.session.add(u)
+        db.session.commit()
+        success = f'用户 "{new_username}" 创建成功！'
+    
+    return render_template('add_user.html', user=user, error=error, success=success)
+
+
 # 供快速创建测试用户的接口（仅用于演示，生产请移除或保护）
+# 注意：此接口现在也需要接收 MD5 哈希后的密码
 @app.route('/_create_user', methods=['POST'])
 def create_user_route():
     username = request.form.get('username')
-    password = request.form.get('password')
-    if not username or not password:
-        return jsonify({'error': 'username and password required'}), 400
+    password_hash_md5 = request.form.get('password_hash')
+    if not username or not password_hash_md5:
+        return jsonify({'error': 'username and password_hash required'}), 400
     if User.query.filter_by(username=username).first():
         return jsonify({'error': 'user exists'}), 400
-    u = User(username=username, password_hash=generate_password_hash(password))
+    u = User(username=username, password_hash=generate_password_hash(password_hash_md5))
     db.session.add(u)
     db.session.commit()
     return jsonify({'ok': True, 'user_id': u.id})
 
 
+def init_admin_user():
+    """
+    初始化管理员用户
+    从环境变量 DEFAULT_ADMIN_PASSWORD 获取默认密码
+    如果数据库中不存在 admin 用户，则创建一个
+    注意：环境变量中的密码应为明文，程序会先计算 MD5 再存储
+    """
+    import hashlib
+    default_password = os.getenv('DEFAULT_ADMIN_PASSWORD')
+    if not default_password:
+        print("警告：未设置 DEFAULT_ADMIN_PASSWORD 环境变量，跳过管理员用户初始化")
+        return
+    
+    admin = User.query.filter_by(username='admin').first()
+    if admin:
+        print("管理员用户已存在，跳过创建")
+        return
+    
+    # 计算密码的 MD5 哈希（模拟前端行为）
+    password_md5 = hashlib.md5(default_password.encode()).hexdigest()
+    # 使用 werkzeug 对 MD5 哈希再次哈希后存储
+    admin = User(username='admin', password_hash=generate_password_hash(password_md5))
+    db.session.add(admin)
+    db.session.commit()
+    print("管理员用户 'admin' 已创建")
+
+
 with app.app_context():
     db.create_all()
     print("数据库表已创建或已存在")
+    init_admin_user()
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

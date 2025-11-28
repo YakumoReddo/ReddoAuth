@@ -2,30 +2,181 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>登录</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>登录 - ReddoAuth</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+    .login-container {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+      padding: 40px;
+      width: 100%;
+      max-width: 400px;
+    }
+    h1 {
+      text-align: center;
+      color: #333;
+      margin-bottom: 30px;
+      font-size: 28px;
+    }
+    .error-message {
+      background-color: #fee;
+      border: 1px solid #fcc;
+      color: #c00;
+      padding: 12px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    .form-group {
+      margin-bottom: 20px;
+    }
+    label {
+      display: block;
+      color: #555;
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+    input[type="text"],
+    input[type="password"] {
+      width: 100%;
+      padding: 12px 16px;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      font-size: 16px;
+      transition: border-color 0.3s;
+    }
+    input[type="text"]:focus,
+    input[type="password"]:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+    .checkbox-group {
+      display: flex;
+      align-items: center;
+      margin-bottom: 24px;
+    }
+    .checkbox-group input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      margin-right: 10px;
+    }
+    .checkbox-group label {
+      margin-bottom: 0;
+      color: #666;
+      font-weight: normal;
+    }
+    button[type="submit"] {
+      width: 100%;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 14px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    button[type="submit"]:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+    }
+    button[type="submit"]:active {
+      transform: translateY(0);
+    }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/blueimp-md5/2.19.0/js/md5.min.js"></script>
+  <script src="{{ url_for('static', filename='md5.js') }}"></script>
 </head>
 <body>
-  <h1>登录</h1>
-  {% if error %}
-    <p style="color:red">{{ error }}</p>
-  {% endif %}
-  <form method="post" action="/login">
-    <input type="hidden" name="next" value="{{ next }}">
-    <div>
-      <label>用户名：<input type="text" name="username"></label>
-    </div>
-    <div>
-      <label>密码：<input type="password" name="password"></label>
-    </div>
-    <div>
-      <label><input type="checkbox" name="remember"> 记住我（30天）</label>
-    </div>
-    <!-- 指纹字段：预留 -->
-    <input type="hidden" name="fingerprint" value="">
-    <div>
+  <div class="login-container">
+    <h1>🔐 登录</h1>
+    {% if error %}
+      <div class="error-message">{{ error }}</div>
+    {% endif %}
+    <form id="loginForm" method="post" action="/login">
+      <input type="hidden" name="next" value="{{ next }}">
+      <input type="hidden" name="password_hash" id="password_hash" value="">
+      <input type="hidden" name="fingerprint" id="fingerprint" value="">
+      
+      <div class="form-group">
+        <label for="username">用户名</label>
+        <input type="text" id="username" name="username" required placeholder="请输入用户名">
+      </div>
+      
+      <div class="form-group">
+        <label for="password">密码</label>
+        <input type="password" id="password" name="password_raw" required placeholder="请输入密码">
+      </div>
+      
+      <div class="checkbox-group">
+        <input type="checkbox" id="remember" name="remember">
+        <label for="remember">记住我（30天）</label>
+      </div>
+      
       <button type="submit">登录</button>
-    </div>
-  </form>
+    </form>
+  </div>
+
+  <script>
+    // Generate browser fingerprint
+    function generateFingerprint() {
+      var fp = {
+        userAgent: navigator.userAgent,
+        language: navigator.language,
+        platform: navigator.platform,
+        screenResolution: screen.width + 'x' + screen.height,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        colorDepth: screen.colorDepth
+      };
+      return JSON.stringify(fp);
+    }
+
+    // Form submission handler
+    document.getElementById('loginForm').addEventListener('submit', function(e) {
+      var username = document.getElementById('username').value.trim();
+      var password = document.getElementById('password').value;
+
+      // Validate inputs
+      if (!username) {
+        e.preventDefault();
+        alert('请输入用户名');
+        return false;
+      }
+      if (!password) {
+        e.preventDefault();
+        alert('请输入密码');
+        return false;
+      }
+
+      // Hash password with MD5
+      var passwordHash = md5(password);
+      document.getElementById('password_hash').value = passwordHash;
+      
+      // Clear raw password field before submission
+      document.getElementById('password').value = '';
+      document.getElementById('password').name = '';
+
+      // Set fingerprint
+      document.getElementById('fingerprint').value = generateFingerprint();
+
+      return true;
+    });
+  </script>
 </body>
 </html>
-```

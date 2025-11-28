@@ -41,6 +41,8 @@ services:
       MYSQL_DATABASE: ${MYSQL_DATABASE:-authdb}
       MYSQL_USER: ${MYSQL_USER:-authuser}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:-authpass}
+      # 默认管理员密码（首次启动时创建 admin 用户）
+      DEFAULT_ADMIN_PASSWORD: ${DEFAULT_ADMIN_PASSWORD:-}
       # Flask 环境变量（可按需调整）
       FLASK_APP: app.py
       FLASK_ENV: production
