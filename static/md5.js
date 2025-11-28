@@ -174,7 +174,18 @@
   }
 
   function str2rstrUTF8(input) {
-    return unescape(encodeURIComponent(input));
+    // Modern replacement for deprecated unescape(encodeURIComponent(input))
+    var encoded = encodeURIComponent(input);
+    var result = '';
+    for (var i = 0; i < encoded.length; i++) {
+      if (encoded[i] === '%') {
+        result += String.fromCharCode(parseInt(encoded.substr(i + 1, 2), 16));
+        i += 2;
+      } else {
+        result += encoded[i];
+      }
+    }
+    return result;
   }
 
   function rawMD5(s) {

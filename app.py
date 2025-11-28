@@ -148,7 +148,12 @@ def login():
     登录页：
     - GET: 展示登录表单（accepts ?next=）
     - POST: 校验用户名密码，创建 token，设置 cookie 并跳回 next
-    注意：前端发送的是 MD5 哈希后的密码，不是明文密码
+    
+    安全说明：
+    - 前端发送的是 MD5 哈希后的密码，避免明文密码在网络中传输
+    - 这提供了基本的密码保护，防止网络嗅探直接获取原始密码
+    - 后端使用 werkzeug 的 check_password_hash 验证 MD5 哈希
+    - 生产环境应始终使用 HTTPS
     """
     if request.method == 'GET':
         next_url = request.args.get('next', '/')
@@ -312,11 +317,18 @@ def init_admin_user():
     从环境变量 DEFAULT_ADMIN_PASSWORD 获取默认密码
     如果数据库中不存在 admin 用户，则创建一个
     注意：环境变量中的密码应为明文，程序会先计算 MD5 再存储
+    
+    安全说明：
+    - 前端使用 MD5 哈希密码是为了避免明文密码在网络传输中暴露
+    - MD5 本身不是安全的密码哈希算法，但这里的目的是防止密码嗅探
+    - 后端使用 werkzeug 的 generate_password_hash 对 MD5 哈希进行二次哈希存储
+    - 生产环境强烈建议使用 HTTPS
     """
     import hashlib
     default_password = os.getenv('DEFAULT_ADMIN_PASSWORD')
     if not default_password:
         print("警告：未设置 DEFAULT_ADMIN_PASSWORD 环境变量，跳过管理员用户初始化")
+        print("注意：首次部署时必须设置 DEFAULT_ADMIN_PASSWORD 环境变量以创建管理员账户")
         return
     
     admin = User.query.filter_by(username='admin').first()
