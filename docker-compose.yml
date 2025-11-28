@@ -7,13 +7,13 @@ services:
     restart: unless-stopped
     environment:
       # 初始化 MySQL 的认证信息，生产环境请替换为更安全的密码并使用 secrets
-      MYSQL_ROOT_PASSWORD: rootpassword
-      MYSQL_DATABASE: authdb
-      MYSQL_USER: authuser
-      MYSQL_PASSWORD: authpass
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpass}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-authdb}
+      MYSQL_USER: ${MYSQL_USER:-authuser}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-authpass}
     ports:
       # 将容器的 3306 映射到宿主机的 23308
-      - "23308:3306"
+      - "${MYSQL_EXPOSE_PORT:-23308}:3306"
     volumes:
       # 持久化 MySQL 数据
       - db_data:/var/lib/mysql
@@ -37,15 +37,15 @@ services:
       # 将数据库连接信息注入容器环境，建议在 app 中使用这些环境变量来构建 SQLALCHEMY_DATABASE_URI
       MYSQL_HOST: db
       MYSQL_PORT: 3306
-      MYSQL_DATABASE: authdb
-      MYSQL_USER: authuser
-      MYSQL_PASSWORD: authpass
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-authdb}
+      MYSQL_USER: ${MYSQL_USER:-authuser}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-authpass}
       # Flask 环境变量（可按需调整）
       FLASK_APP: app.py
       FLASK_ENV: production
     ports:
       # 将容器的 5000（Flask 默认端口）映射到宿主机的 8082
-      - "8082:5000"
+      - "${APP_EXPOSE_PORT:-8082}:5000"
     volumes:
       # 挂载当前项目目录到容器，便于开发时热更新（生产可去掉或改为构建镜像时 COPY）
       - ./:/app
