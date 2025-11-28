@@ -2,38 +2,209 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>个人中心</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>个人中心 - ReddoAuth</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .container {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+      padding: 40px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 30px;
+      flex-wrap: wrap;
+      gap: 15px;
+    }
+    h1 {
+      color: #333;
+      font-size: 28px;
+    }
+    .header-actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .btn {
+      display: inline-block;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      transition: transform 0.2s, box-shadow 0.2s;
+      border: none;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+    }
+    .btn-danger {
+      background: #dc3545;
+      color: white;
+    }
+    .btn-danger:hover {
+      background: #c82333;
+    }
+    .btn-small {
+      padding: 6px 12px;
+      font-size: 12px;
+    }
+    h2 {
+      color: #333;
+      margin-bottom: 20px;
+      font-size: 20px;
+      border-bottom: 2px solid #667eea;
+      padding-bottom: 10px;
+    }
+    .table-container {
+      overflow-x: auto;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    th, td {
+      padding: 12px 15px;
+      text-align: left;
+      border-bottom: 1px solid #eee;
+    }
+    th {
+      background: #f8f9fa;
+      font-weight: 600;
+      color: #333;
+      white-space: nowrap;
+    }
+    tr:hover {
+      background: #f8f9fa;
+    }
+    .fingerprint-cell {
+      max-width: 200px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 12px;
+      color: #666;
+    }
+    .badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .badge-success {
+      background: #d4edda;
+      color: #155724;
+    }
+    .badge-secondary {
+      background: #e9ecef;
+      color: #495057;
+    }
+    .empty-state {
+      text-align: center;
+      padding: 40px;
+      color: #666;
+    }
+    @media (max-width: 768px) {
+      .container {
+        padding: 20px;
+      }
+      .header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      th, td {
+        padding: 8px 10px;
+        font-size: 14px;
+      }
+    }
+  </style>
 </head>
 <body>
-  <h1>个人中心 - {{ user.username }}</h1>
-  <form method="post" action="/logout">
-    <button type="submit">登出当前会话</button>
-  </form>
+  <div class="container">
+    <div class="header">
+      <h1>👤 个人中心 - {{ user.username }}</h1>
+      <div class="header-actions">
+        {% if user.username == 'admin' %}
+        <a href="/add_user" class="btn btn-primary">添加用户</a>
+        {% endif %}
+        <form method="post" action="/logout" style="display:inline">
+          <button type="submit" class="btn btn-danger">退出登录</button>
+        </form>
+      </div>
+    </div>
 
-  <h2>已存储的 token / ip / domain 列表</h2>
-  <table border="1" cellpadding="6">
-    <thead>
-      <tr><th>ID</th><th>Domain</th><th>IP</th><th>Expires At (UTC)</th><th>Remember</th><th>Fingerprint</th><th>操作</th></tr>
-    </thead>
-    <tbody>
-    {% for t in tokens %}
-      <tr>
-        <td>{{ t.id }}</td>
-        <td>{{ t.domain }}</td>
-        <td>{{ t.ip }}</td>
-        <td>{{ t.expires_at }}</td>
-        <td>{{ 'Yes' if t.remember else 'No' }}</td>
-        <td>{{ t._short_fp or '' }}</td>
-        <td>
-          <form method="post" style="display:inline">
-            <input type="hidden" name="action" value="delete">
-            <input type="hidden" name="token_id" value="{{ t.id }}">
-            <button type="submit">删除</button>
-          </form>
-        </td>
-      </tr>
-    {% endfor %}
-    </tbody>
-  </table>
+    <h2>🔐 已登录的设备列表</h2>
+    
+    {% if tokens %}
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>域名</th>
+            <th>IP 地址</th>
+            <th>过期时间 (UTC)</th>
+            <th>记住登录</th>
+            <th>设备指纹</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for t in tokens %}
+          <tr>
+            <td>{{ t.id }}</td>
+            <td>{{ t.domain }}</td>
+            <td>{{ t.ip }}</td>
+            <td>{{ t.expires_at.strftime('%Y-%m-%d %H:%M') }}</td>
+            <td>
+              {% if t.remember %}
+              <span class="badge badge-success">是</span>
+              {% else %}
+              <span class="badge badge-secondary">否</span>
+              {% endif %}
+            </td>
+            <td class="fingerprint-cell" title="{{ t._short_fp or '' }}">{{ t._short_fp or '-' }}</td>
+            <td>
+              <form method="post" style="display:inline">
+                <input type="hidden" name="action" value="delete">
+                <input type="hidden" name="token_id" value="{{ t.id }}">
+                <button type="submit" class="btn btn-danger btn-small">删除</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <p>暂无登录记录</p>
+    </div>
+    {% endif %}
+  </div>
 </body>
 </html>
